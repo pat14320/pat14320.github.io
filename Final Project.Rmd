@@ -1,0 +1,497 @@
+---
+title: "Final Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_data}
+  # Here, we are loading the relevant libraries used in this project
+  library("tidyverse")
+  library(randomForest)
+```
+
+For my final project, I have decided to analyze a Pokemon data set containing data on Pokemon from the older generations of Pokemon to the most current. Specifically, this data set contains characteristics of each Pokemon in the Pokemon video series games where players collect their own Pokemon in order to battle other Pokemon in the game. Let's load the dataset and then take a look at the first few elements.
+
+
+```{r loadData, eval= TRUE}
+  pokemon <- read.csv("Pokemon.csv")
+  head(pokemon)
+```
+
+
+Before performing any data analysis, it's important to explain the meaning of the different columns in the dataset that we are examining. To begin, the first column "ID" is the ID of the Pokemon. Notice how there are repeating Pokemon IDs because the Mega version of a Pokemon is still considered to be the same entity of the originial Pokemon. For example, both Venusaur and VenusaurMega Venusaur have ID 3 because they are both the same Pokemon.
+
+The Type 1 column is the "type" that this Pokemon is, and the Type 2 column is the second "type" that a given Pokemon is. Every Pokemon has to have at least one type, but can also have a second type. It is important to note that Pokemon who do not have a second type have a "" as the value for the Type 2 column. Pokemon Types determine a Pokemon's strength and weakness to certain attacks that they receieve.
+
+The HP column is how many health points a Pokemon has, the attack column is how many attack points a Pokemon has, the defense column is how many defense points a Pokemon has, the Special Attack column is how many special attack points a Pokemon has, the Special Defense column is how many special defense points a Pokemon has, and the speed column is how many speed points a Pokemon has. The total column is a summation of the number of these various characteristics, and is an indication of how strong or powerful a Pokemon is.
+
+The legendary column indicates whether or not a Pokemon is a legendary Pokemon, and the generation column indicates what generation this Pokemon is from. However, because there are only six generations of Pokemon, it would be a good idea to convert the generation column into a categorical variable, which we'll do in the code right down below.
+
+To learn more about the general Pokemon series, refer to: https://en.wikipedia.org/wiki/Pok%C3%A9mon_(video_game_series)
+To learn more about different Pokemon types, refer to: https://bulbapedia.bulbagarden.net/wiki/Type
+To learn more about the different characteristics of Pokemon, refer to: https://bulbapedia.bulbagarden.net/wiki/Statistic
+To learn more about what legendary Pokemon are, refer to: https://bulbapedia.bulbagarden.net/wiki/Legendary_Pok%C3%A9mon
+To learn more about what Pokemon generations are, refer to: http://pokemon.wikia.com/wiki/Generation
+
+
+```{r cleanData, eval= TRUE}
+  # Here, we are making the generation attribute into a categorical variable since Pokemon can only be from 6
+  # different generations
+  pokemon$Generation <- as.factor(pokemon$Generation)
+  head(pokemon)
+```
+
+
+**Generations Analysis**
+
+
+This section is devoted to looking at how good the characteristics of Pokemon are across different generations to get an idea of which generation has the strongest and best Pokemon. 
+
+We're going to start off the analysis portion of this project by simply looking at the number of Pokemon from each generation just to get an idea of how the data is distributed across different generations.
+
+```{r generationAnalysis, eval= TRUE}
+  ggplot(pokemon, aes(x=Generation)) +
+    geom_bar(fill="#ffd866", colour="black") +
+    labs(x="Generation", y="Number of Pokemon", title= "Number of Pokemon Across Generations")
+```
+
+
+It looks like most Pokemon are from the first, third and fifth generation with fewer Pokemon from the generations in between. 
+
+
+Next, I am going to look at the number of legendary Pokemon from each generation. The reason I am looking at this is because I suspect that since legendary Pokemons are known to be powerful, it would make sense that the best generation of Pokemon would also have the highest number of lengendary Pokemons in it.
+
+```{r numberOfLegendary, eval= TRUE}
+  # Filtering the dataset to contain only the legendary pokemons
+  only_legendaries <- pokemon %>% filter(Legendary == "True")
+
+  ggplot(only_legendaries, aes(x=Generation)) +
+  geom_bar(fill="#66d6ff", colour="black") +
+  labs(x="Generation", y="Number of Legendary Pokemon", title= "Number of Legendary Pokemon Accross Generations")
+```
+
+However, it is better to get the porportion of legendary pokemon for each generation, rather than merely just the raw number of legendaries for that generation in order to compare the number of legendaries accross generations.
+
+```{r porportionOfLegendary, eval= TRUE}
+  
+numberLegendaryPerGeneration <- pokemon %>% 
+    group_by(Generation) %>%
+    summarize(numberLegendary= sum(Legendary == "True"), numberInGeneration= n()) %>%
+    mutate(ratioOfLegendary= numberLegendary / numberInGeneration)
+
+numberLegendaryPerGeneration %>%
+    ggplot(mapping=aes(y=ratioOfLegendary, x=Generation)) +
+    geom_point() +
+    labs(x= "Generation", y= "Ratio of Legendary", title= "Ratio of Legendaries Accross Generations")
+```
+
+
+Judging by the Scatterplot above, it looks like generation 3, 4, and 6 have the highest porportion of legendary Pokemon, leading me to anticipate that the best generation could be one of these.
+
+
+I am now going to create box plots across different generations to see how they compare in the different characterstics described above.
+
+
+```{r genBoxplotHP, eval= TRUE}
+# Boxplot of HP across different generations
+  pokemon %>%
+  ggplot(mapping= aes(x= Generation, y= HP)) +
+  geom_boxplot() +
+  labs(title= "HP Across Generations")
+```
+
+
+```{r genBoxplotAttack, eval= TRUE}
+# Boxplot of Attack across different generations
+  pokemon %>%
+  ggplot(mapping= aes(x= Generation, y= Attack)) +
+  geom_boxplot() +
+  labs(title= "Attack Across Generations")
+```
+
+```{r genBoxplotDefense, eval= TRUE}
+# Boxplot of Defense across different generations
+  pokemon %>%
+  ggplot(mapping= aes(x= Generation, y= Defense)) +
+  geom_boxplot() +
+  labs(title= "Defense Across Generations")
+```
+
+```{r genBoxplotSpAtk, eval= TRUE}
+# Boxplot of Special Attack across different generations
+  pokemon %>%
+  ggplot(mapping= aes(x= Generation, y= Sp..Atk)) +
+  geom_boxplot() +
+  labs(title= "Special Attack Across Generations")
+```
+
+```{r genBoxplotSpDef, eval= TRUE}
+# Boxplot of Special Defense across different generations
+  pokemon %>%
+  ggplot(mapping= aes(x= Generation, y= Sp..Def)) +
+  geom_boxplot() +
+  labs(title= "Special Defenese Across Generations")
+```
+
+```{r genBoxplotSpeed, eval= TRUE}
+# Boxplot of speed across different generations
+  pokemon %>%
+  ggplot(mapping= aes(x= Generation, y= Speed)) +
+  geom_boxplot() +
+  labs(title= "Speed Across Generations")
+```
+
+```{r genBoxplotTotal, eval= TRUE}
+# Boxplot of total across different generations
+  pokemon %>%
+  ggplot(mapping= aes(x= Generation, y= Total)) +
+  geom_boxplot() +
+  labs(title= "Total Across Generations")
+```
+
+
+Looking at the different boxplots in various generations, it appears that the skill level of the different generations are actually rather evenly distributed. In other words, all generations seem to have been created equal, and there isn't a generation that is clearly superior to another one. These results make sense however, because the Pokemon games include Pokemon from that current generation of the game or from earlier generations, and it would only be fair to have the overall strength and skill of newer generations remain about the same as older ones to keep the game competitive.
+
+The conclusion of analyzing the stats of Pokemon across generations is important because now players who play the game can condifently know that they wouldn't be put at a disadvantage just because their Pokemon is from a certain generation; players can know that Pokemon across the generations are all created equal.
+
+
+
+**Legendary Pokemon Analysis **
+
+As I mentioned earlier, legendary Pokemon are known to be stronger than just the regular Pokemon, so now I want to compare the violin plots of legendary Pokemon versus non-legendaries in order to see the difference between their stats.
+
+```{r LegendaryHP, eval= TRUE}
+  # Violin plot comparing Legendary and Non-Legendary HP
+  pokemon %>%
+  ggplot(aes(x=Legendary, y=HP)) +
+    geom_violin() +
+    labs(title="Legendary Vs. Non-Legendary HP",
+         x = "Legendary",
+         y = "HP")
+```
+
+
+```{r LegendaryAttack, eval= TRUE}
+  # Violin plot comparing Legendary and Non-Legendary Attack
+  pokemon %>%
+  ggplot(aes(x=Legendary, y=Attack)) +
+    geom_violin() +
+    labs(title="Legendary Vs. Non-Legendary Attack",
+         x = "Legendary",
+         y = "Attack")
+```
+
+
+```{r LegendaryDefense, eval= TRUE}
+  # Violin plot comparing Legendary and Non-Legendary Defense
+  pokemon %>%
+  ggplot(aes(x=Legendary, y=Defense)) +
+    geom_violin() +
+    labs(title="Legendary Vs. Non-Legendary Defense",
+         x = "Legendary",
+         y = "Defense")
+```
+
+
+```{r LegendarySpecialAttack, eval= TRUE}
+  # Violin plot comparing Legendary and Non-Legendary Special Attack
+  pokemon %>%
+  ggplot(aes(x=Legendary, y=Sp..Atk)) +
+    geom_violin() +
+    labs(title="Legendary Vs. Non-Legendary Special Attack",
+         x = "Legendary",
+         y = "Special Attack")
+```
+
+
+```{r LegendarySpecialDefense, eval= TRUE}
+  # Violin plot comparing Legendary and Non-Legendary Special Defense
+  pokemon %>%
+  ggplot(aes(x=Legendary, y=Sp..Def)) +
+    geom_violin() +
+    labs(title="Legendary Vs. Non-Legendary Special Defense",
+         x = "Legendary",
+         y = "Special Defense")
+```
+
+
+```{r LegendarySpeed, eval= TRUE}
+  # Violin plot comparing Legendary and Non-Legendary Special Defense
+  pokemon %>%
+  ggplot(aes(x=Legendary, y=Speed)) +
+    geom_violin() +
+    labs(title="Legendary Vs. Non-Legendary Speed",
+         x = "Legendary",
+         y = "Speed")
+```
+
+
+```{r LegendaryTotal, eval= TRUE}
+  # Violin plot comparing Legendary and Non-Legendary Total
+  pokemon %>%
+  ggplot(aes(x=Legendary, y=Total)) +
+    geom_violin() +
+    labs(title="Legendary Vs. Non-Legendary Total",
+         x = "Legendary",
+         y = "Total")
+```
+
+
+Judging by the violin plots above, it is clear that legendary Pokemon are distributed around a higher score for every statisic compared to regular Pokemon, especially in the "total" statistic mentioned earlier. The results of these violin plots make sense because the reason certain Pokemon are classified as legendary Pokemon are to indicate that the Pokemon is rare and powerful. The conclusion of these violin plots reassures Pokemon players that legendary Pokemon are indeed significantly better than just regular Pokemon, and having legendary Pokemon can definitely strengthen the skills of your team of Pokemon.
+
+
+
+** Mega Pokemon Versus Legendaries **
+
+We know that legendary Pokemon are far stronger than other Pokemon from the data analysis above. However, there are other types of Pokemon in the game called mega Pokemon, which are essentially an upgraded and more powerful version of an existing Pokemon. I thought that comparing legendaries against mega Pokemon across the different stats would be an interesting comparison since both of these types of Pokemon are known to be powerful to begin with.
+
+To learn more about mega Pokemon: https://bulbapedia.bulbagarden.net/wiki/Mega_Evolution
+
+First, I am creating a new column that indicates whether a Pokemon is Legendary, Mega or neither.
+
+```{r MegaPokemon, eval= TRUE}
+  # Creating a new column called Special, that can either take on the values of Legendary, Mega, or Neither
+  special_pokemon <- pokemon %>%
+    mutate(Special= ifelse(Legendary == "True", "Legendary", ifelse(str_detect(Name, ".+Mega.+"), "Mega", "Neither")))
+
+  # Making that new column into a categorical variable
+  special_pokemon$Special <- as.factor(special_pokemon$Special)
+  head(special_pokemon)
+```
+
+
+Comparing the density plots of Legendary Pokemon versus Mega Pokemon versus Regular Pokemon across different stats.
+
+```{r megaHP, eval= TRUE}
+  # Comparing HP
+  special_pokemon %>%
+    ggplot(aes(x= HP, fill= Special)) +
+    geom_density(alpha= 0.5) +
+    labs(x= "HP", y= "Density", title= "HP of Mega vs Legendary vs Neither")
+```
+
+
+```{r megaAttack, eval= TRUE}
+  # Comparing Attack
+  special_pokemon %>%
+    ggplot(aes(x= Attack, fill= Special)) +
+    geom_density(alpha= 0.5) +
+    labs(x= "Attack", y= "Density", title= "Attack of Mega vs Legendary vs Neither")
+```
+
+
+```{r megaDefense, eval= TRUE}
+  # Comparing Defense
+  special_pokemon %>%
+    ggplot(aes(x= Defense, fill= Special)) +
+    geom_density(alpha= 0.5) +
+    labs(x= "Defense", y= "Density", title= "Defense of Mega vs Legendary vs Neither")
+```
+
+
+```{r megaSpecialAttack, eval= TRUE}
+  # Comparing Special Attack
+  special_pokemon %>%
+    ggplot(aes(x= Sp..Atk, fill= Special)) +
+    geom_density(alpha= 0.5) +
+    labs(x= "Special Attack", y= "Density", title= "Special Attack of Mega vs Legendary vs Neither")
+```
+
+```{r megaSpecialDefense, eval= TRUE}
+  # Comparing Special Defense
+  special_pokemon %>%
+    ggplot(aes(x= Sp..Def, fill= Special)) +
+    geom_density(alpha= 0.5) +
+    labs(x= "Special Defense", y= "Density", title= "Special Defense of Mega vs Legendary vs Neither")
+```
+
+
+
+
+```{r megaSpeed, eval= TRUE}
+  # Comparing Speed
+  special_pokemon %>%
+    ggplot(aes(x= Speed, fill= Special)) +
+    geom_density(alpha= 0.5) +
+    labs(x= "Speed", y= "Density", title= "Speed of Mega vs Legendary vs Neither")
+```
+
+
+```{r megaTotal, eval= TRUE}
+  # Comparing Total
+  special_pokemon %>%
+    ggplot(aes(x= Total, fill= Special)) +
+    geom_density(alpha= 0.5) +
+    labs(x= "Total", y= "Density", title= "Total of Mega vs Legendary vs Neither")
+```
+
+
+Judging by the density plots comparing Legendary to Mega Pokemon to just regular Pokemon, it's clear that Mega Pokemon and Legendary are significantly superior to regular Pokemon in every statistic. Mega Pokemon and legendary Pokemon appear to be much more closely contested. Mega Pokemon are superior to legendary pokemon in Attack and Defense, but fall short to legendary Pokemon in all other statistics.
+
+These density plots show that although Mega Pokemons are a superior and strong version of an already existing Pokemon, overall, they still fall short compared to legendary Pokemon. These results show just how powerful and dominant legendary Pokemon are to players of the game, and how having legendary Pokemon on your team could be a big plus.
+
+
+** Notable Pokemon **
+
+We've spent a lot of time comparing the skill levels of different groups of Pokemon, but now I'm going to look at just the top 5 Pokemon in each statistic to give players a better idea of which specific Pokemon really stand out.
+
+```{r top5HP, eval= TRUE}
+  # Top 5 HP
+  pokemon %>%
+    arrange(desc(HP)) %>%
+    slice(1:5) %>%
+    ggplot(aes(x=reorder(Name, HP), y=HP)) +
+    geom_bar(stat="identity", fill="#D84595", colour="black") +
+    coord_flip() +
+    labs(x="Name", title="Top 5 HP Pokémon")
+```
+
+```{r top5Attack, eval= TRUE}
+  # Top 5 Attack
+  pokemon %>%
+    arrange(desc(Attack)) %>%
+    slice(1:5) %>%
+    ggplot(aes(x=reorder(Name, Attack), y=Attack)) +
+    geom_bar(stat="identity", fill="#D84595", colour="black") +
+    coord_flip() +
+    labs(x="Name", title="Top 5 Attack Pokémon")
+```
+
+
+```{r top5Defense, eval= TRUE}
+  # Top 5 Defense
+  pokemon %>%
+    arrange(desc(Defense)) %>%
+    slice(1:5) %>%
+    ggplot(aes(x=reorder(Name, Defense), y=Defense)) +
+    geom_bar(stat="identity", fill="#D84595", colour="black") +
+    coord_flip() +
+    labs(x="Name", title="Top 5 Defense Pokémon")
+```
+
+
+```{r top5SpecialAttack, eval= TRUE}
+  # Top 5 Special Attack
+  pokemon %>%
+    arrange(desc(Sp..Atk)) %>%
+    slice(1:5) %>%
+    ggplot(aes(x=reorder(Name, Sp..Atk), y=Sp..Atk)) +
+    geom_bar(stat="identity", fill="#D84595", colour="black") +
+    coord_flip() +
+    labs(x="Name", title="Top 5 Special Attack Pokémon")
+```
+
+
+
+```{r top5SpecialDefense, eval= TRUE}
+  # Top 5 Special Defense
+  pokemon %>%
+    arrange(desc(Sp..Def)) %>%
+    slice(1:5) %>%
+    ggplot(aes(x=reorder(Name,Sp..Def), y= Sp..Def)) +
+    geom_bar(stat="identity", fill="#D84595", colour="black") +
+    coord_flip() +
+    labs(x="Name", title="Top 5 Special Defense Pokémon")
+```
+
+
+```{r top5Speed, eval= TRUE}
+  # Top 5 Speed
+  pokemon %>%
+    arrange(desc(Speed)) %>%
+    slice(1:5) %>%
+    ggplot(aes(x=reorder(Name,Speed), y= Speed)) +
+    geom_bar(stat="identity", fill="#D84595", colour="black") +
+    coord_flip() +
+    labs(x="Name", title="Top 5 Speed Pokémon")
+```
+
+
+
+```{r top5Total, eval= TRUE}
+  # Top 5 Total
+  pokemon %>%
+    arrange(desc(Total)) %>%
+    slice(1:5) %>%
+    ggplot(aes(x=reorder(Name,Total), y= Total)) +
+    geom_bar(stat="identity", fill="#D84595", colour="black") +
+    coord_flip() +
+    labs(x="Name", title="Top 5 Total Pokémon")
+```
+
+Judging by the top 5 lists of Pokemon in each category, it looks that Mega Rayquaza is a very strong Pokemon as it is ranked first in the total attribute, and it also appears in the top 5 in special attack and attack. Mega Mewtwo X and Y also appear to be extremely powerful Pokemon that appear in the top 5 in total, special attack, and attack. Overall, it looks that Mega Rayquaza, Mega Mewtwo X and Mega Mewtwo Y are very powerful attacking Pokemon and also have high stats in their total ranking, making me believe that these three Pokemon could debatably be the best three Pokemon in the game.
+
+These lists of top 5 Pokemon could be interesting for players of the game when they are debating who the best Pokemon is in the game, and it would be interesting to see if there is a clear and definitive "best" Pokemon in the game, and what the criteria and credentials would be in order to determine that. Debating the greatest of all time has always been an engaging debate in the world of sports, and I'm sure it's not different here in the game of Pokemon.
+
+
+
+
+** Machine Learning **
+
+
+In this very last section I will be using Machine Learning to predict whether or not a Pokemon is a legendary Pokemon based on the different statistics of a Pokemon.
+
+
+In this first section, I will be splitting up the data into testing and training data sets.
+```{r testAndTrainDatasets, eval= TRUE}
+  set.seed(1234)
+
+  # Splitting up the data into the testing and training data with 20 percent of the data going into the
+  # testing data and 80 percent going into the training data
+
+  test_random_forest_df <- pokemon %>%
+    sample_frac(.2)
+  
+  train_random_forest_df <- pokemon %>%
+    anti_join(test_random_forest_df, by="Name")
+```
+
+
+
+Here, we are building the random forest model and also showing the model error.
+```{r createRandomForest, eval= TRUE}
+  # Building the random forest model
+  rf_model <- randomForest(Legendary~., data=train_random_forest_df %>% select(-Name, -X.))
+  
+  # Showing the model error
+  plot(rf_model, ylim=c(0,0.45))
+  legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+```
+
+The black line is showing the overall error rate which is below 10%, and the red and green lines show the error rates for "Not a Legendary" and "Legendary" respectively. Looking at the graph, we see that our model is much more successful predicting the Pokemon that are not legendary than the ones that are.
+
+
+I am now going to look at the importance of the different statistics in predicting whether or not a Pokemon is legendary. We look at relative importance by plotting the mean decrease in Gini calculated across all of the different trees.
+```{r variableImportance, eval= TRUE}
+  # Getting the importance
+  importance  <- importance(rf_model)
+  varImportance <- data.frame(Variables = row.names(importance), Importance = round(importance[ ,'MeanDecreaseGini'],2))
+  
+  # Based on the importance, creating a "rank" variable
+  rankImportance <- varImportance %>% mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+  
+  # Plotting the relative importance of the different statistics of Pokemon
+  ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+    y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+    hjust=0, vjust=0.55, size = 4, colour = 'green') +
+  labs(x = 'Variable') +
+  coord_flip()
+```
+After ranking the importance of each statistic, we can clearly see that the most important statistic to use when predicting whether or not a Pokemon is legendary is the Total statistic (which is just a summation of all the other stats). This makes sense because the total statistic is supposed to be an indicator of overall strength of a Pokemon, so it makes sense that examining a Pokemons' overall strength can really help predict whether a Pokemon is a legendary or not.
+
+It's also interesting to see that the second most useful predictor wasn't one of a Pokemons stats like Speed or Special Attack, but instead it is a Pokemons' first type. This leads me to think that certain types of Pokemon are stronger than other types of Pokemon unlike how different generations of Pokemon are equally strong. You can further see that Generation isn't useful in distinguishing between which Pokemon are better than others because it's the least useful variable in predicting which Pokemon are legendary.
+
+Next, we're making predictions on the held out test set and examine the error rate.
+```{r testSetPredictions, eval= TRUE}
+  test_predictions <- predict(rf_model, newdata=test_random_forest_df %>% select(-Name, -X.))
+  confusion_matrix <- table(pred=test_predictions, observed=test_random_forest_df$Legendary)
+  error <- mean(test_random_forest_df$Legendary != test_predictions)
+  error
+```
+
+After making predictions on the testing data, we see that we have a very small error rate.
